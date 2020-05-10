@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<scheme description="" title="" version="2.0">
+	<nodes>
+		<node id="0" name="Preprocess Text" position="(243.0, 189.0)" project_name="Orange3-Text" qualified_name="orangecontrib.text.widgets.owpreprocess.OWPreprocess" title="Preprocess Text" version="" />
+		<node id="1" name="Word Cloud" position="(413.0, 160.0)" project_name="Orange3-Text" qualified_name="orangecontrib.text.widgets.owwordcloud.OWWordCloud" title="Word Cloud" version="" />
+		<node id="2" name="Corpus" position="(86.0, 166.0)" project_name="Orange3-Text" qualified_name="orangecontrib.text.widgets.owcorpus.OWCorpus" title="Corpus" version="" />
+	</nodes>
+	<links>
+		<link enabled="true" id="0" sink_channel="Corpus" sink_node_id="1" source_channel="Corpus" source_node_id="0" />
+		<link enabled="true" id="1" sink_channel="Corpus" sink_node_id="0" source_channel="Corpus" source_node_id="2" />
+	</links>
+	<annotations>
+		<text font-family="Ubuntu" font-size="16" id="0" rect="(236.0, 342.0, 150.0, 26.0)" type="text/plain" />
+	</annotations>
+	<thumbnail />
+	<node_properties>
+		<properties format="literal" node_id="0">{'autocommit': True, 'controlAreaVisible': True, 'savedWidgetGeometry': b'\x01\xd9\xd0\xcb\x00\x03\x00\x00\x00\x00\x01\x1a\x00\x00\x004\x00\x00\x03\xfa\x00\x00\x02p\x00\x00\x01\x1a\x00\x00\x00Y\x00\x00\x03\xfa\x00\x00\x02p\x00\x00\x00\x00\x00\x00\x00\x00\x05V\x00\x00\x01\x1a\x00\x00\x00Y\x00\x00\x03\xfa\x00\x00\x02p', 'filters': {'checked': [0], 'enabled': True, 'keep_n': 100, 'max_df': 0.9, 'min_df': 0.1, 'pattern': '\\.|,|:|;|!|\\?|\\(|\\)|\\||\\+|\'|"|‘|’|“|”|\'|\\’|…|\\-|–|—|\\$|&amp;|\\*|&gt;|&lt;|\\/|\\[|\\]', 'recent_lexicon_files': ['(none)'], 'recent_sw_files': ['/home/himawan/stopwords.txt', '(none)'], 'stopwords_language': 'Indonesian', 'use_df': False, 'use_keep_n': False}, 'ngrams_range': {'enabled': False, 'ngrams_range': (1, 2)}, 'normalizer': {'enabled': False, 'method_index': 0, 'snowball_language': 'English', 'udpipe_language': 'English', 'udpipe_tokenizer': False}, 'pos_tagger': {'enabled': False, 'method_index': 0, 'stanford': {'recent_files': ['(none)'], 'recent_provider': ['(none)'], 'resource_path': ''}}, 'tokenizer': {'enabled': True, 'method_index': 3, 'pattern': '\\w+'}, 'transformers': {'checked': [0], 'enabled': True}, '__version__': 1}</properties>
+		<properties format="pickle" node_id="1">gAN9cQAoWBIAAABjb250cm9sQXJlYVZpc2libGVxAYhYEwAAAHNhdmVkV2lkZ2V0R2VvbWV0cnlx
+AkNCAdnQywADAAAAAAAAAAAAGwAABScAAAL/AAAAAAAAAEAAAAUnAAAC/wAAAAACAAAABVYAAAAA
+AAAAQAAABScAAAL/cQNYDgAAAHNlbGVjdGVkX3dvcmRzcQRjYnVpbHRpbnMKc2V0CnEFXXEGWAMA
+AABkb2txB2GFcQhScQlYCwAAAHdvcmRzX2NvbG9ycQqIWAoAAAB3b3Jkc190aWx0cQtLAFgLAAAA
+X192ZXJzaW9uX19xDEsBdS4=
+</properties>
+		<properties format="pickle" node_id="2">gAN9cQAoWBIAAABjb250cm9sQXJlYVZpc2libGVxAYhYDAAAAHJlY2VudF9maWxlc3ECXXEDKFhD
+AAAAL2hvbWUvaGltYXdhbi9DT0wvREFUQU1JTklORy9weS9jb3ZpZDE5LXRleHQtbWluaW5nL3Rp
+cnRhX2h1ZGhpLmNzdnEEWEcAAAAvaG9tZS9oaW1hd2FuL0NPTC9EQVRBTUlOSU5HL3B5L2Nvdmlk
+MTktdGV4dC1taW5pbmcvS2l5YWlfTWFydWZBbWluLmNzdnEFWEAAAAAvaG9tZS9oaW1hd2FuL0NP
+TC9EQVRBTUlOSU5HL3B5L2NvdmlkMTktdGV4dC1taW5pbmcvZmFkbGl6b24uY3N2cQZYQwAAAC9o
+b21lL2hpbWF3YW4vQ09ML0RBVEFNSU5JTkcvcHkvY292aWQxOS10ZXh0LW1pbmluZy9GYWhyaWhh
+bXphaC5jc3ZxB1g+AAAAL2hvbWUvaGltYXdhbi9DT0wvREFUQU1JTklORy9weS9jb3ZpZDE5LXRl
+eHQtbWluaW5nL2pva293aS5jc3ZxCFgYAAAAZ3JpbW0tdGFsZXMtc2VsZWN0ZWQudGFicQlYEQAA
+AGJvb2stZXhjZXJwdHMudGFicQpYGAAAAGVsZWN0aW9uLXR3ZWV0cy0yMDE2LnRhYnELWBcAAABm
+cmllbmRzLXRyYW5zY3JpcHRzLnRhYnEMWAwAAABhbmRlcnNlbi50YWJxDWVYEwAAAHNhdmVkV2lk
+Z2V0R2VvbWV0cnlxDkNCAdnQywADAAAAAAGnAAAAegAAA2wAAAHgAAABpwAAAJ8AAANsAAAB4AAA
+AAAAAAAABVYAAAGnAAAAnwAAA2wAAAHgcQ9YCwAAAF9fdmVyc2lvbl9fcRBLAVgQAAAAY29udGV4
+dF9zZXR0aW5nc3ERXXESKGNvcmFuZ2V3aWRnZXQuc2V0dGluZ3MKQ29udGV4dApxEymBcRR9cRUo
+WAQAAAB0aW1lcRZHQdet5ptncDBYBgAAAHZhbHVlc3EXfXEYKFgOAAAAdGl0bGVfdmFyaWFibGVx
+GVgFAAAAdHdlZXRxGktnhnEbWAoAAAB1c2VkX2F0dHJzcRxdcR1oGktnhnEeYUr9////hnEfaBBL
+AXVYCgAAAGF0dHJpYnV0ZXNxIH1xIVgCAAAAbm9xIksCc1gFAAAAbWV0YXNxI31xJChYBAAAAGRh
+dGVxJUsDWAUAAAB0d2VldHEmSwN1dWJoEymBcSd9cSgoaBZHQdet4RIhcmhoF31xKShoGVgFAAAA
+dHdlZXRxKktnhnEraBxdcSxoKktnhnEtYUr9////hnEuaBBLAXVoIH1xL1gEAAAAZGF0ZXEwSwJz
+aCN9cTFYBQAAAHR3ZWV0cTJLA3N1YmgTKYFxM31xNChoFkdB163hDR7II2gXfXE1KGgZWAUAAABU
+aXRsZXE2S2eGcTdoHF1xOFgHAAAAQ29udGVudHE5S2eGcTphSv3///+GcTtoEEsBdWggfXE8WAkA
+AABBVFUgVG9waWNxPUsBc2gjfXE+KGg2SwNYCAAAAEFic3RyYWN0cT9LA2g5SwNYDQAAAEFUVSBO
+dW1lcmljYWxxQEsDWAgAAABBVFUgVHlwZXFBSwF1dWJldS4=
+</properties>
+	</node_properties>
+	<session_state>
+		<window_groups />
+	</session_state>
+</scheme>
