@@ -58,8 +58,8 @@ lemmatizer = WordNetLemmatizer()
 def welcomeMessage():
   print('######################################################################')
   print('##                                                                  ##')
-  print('##  NEWS ACCOUNT                                                    ##')
-  print('##  TWITTER TEXT MINING                                             ##')
+  print('##  NEWS ACCOUNT TWITTER TEXT MINING                                ##')
+  print('##  > MOST TERM TWEET, NER EXTRACTION, CLUSTERING                   ##')
   print('##                                                                  ##')
   print('##  BY : - Koko Himawan Permadi (19051204111)                       ##')
   print('##       - M. Khafidhun Alim Muslim (17051204063)                   ##')
@@ -419,7 +419,7 @@ def getData(username, count):
                  'ner_date': ner[nex.DATE],
                  'ner_time': ner[nex.TIME],
                  'ner_money': ner[nex.MONEY],
-                 'content': cleanTweetContent.lower()
+                 'content': noLinkTweetContent
                 }
       df = df.append(entryDf, ignore_index=True)
 
@@ -483,7 +483,7 @@ if __name__ == '__main__':
       # K
       getK = True
       while getK:
-        kVal = input("Input K: ")
+        kVal = input("Input K cluster : ")
         if kVal.isnumeric():
           k = int(kVal)
           if k <= 1:
