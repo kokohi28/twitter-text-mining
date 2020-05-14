@@ -6,6 +6,7 @@ import nerExtractor as nex
 # common
 import os
 import time
+import math
 from os import path
 from datetime import datetime
 
@@ -24,6 +25,12 @@ from nltk.stem import WordNetLemmatizer
 import pandas as pd
 import numpy as np
 
+# ML
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics import adjusted_rand_score
+from collections import Counter
+
 # Blob
 # import textblob
 # from textblob import TextBlob
@@ -34,8 +41,10 @@ from matplotlib.widgets import Button
 
 # Constanta
 TWEET_ONE_PAGE = 20
-TOP_WORD = 30
+TOP_WORD = 40
 MAX_PREVIEW_SCRAPPER = 70 # char
+K = 5
+PERCENT_TRAIN = 80
 
 # VAR
 # create stopwords
@@ -153,6 +162,116 @@ def processTokenNer(ner):
         pass #
 
   return tokenNer
+
+# Test tweet cluster and print
+def testTweetCluster(vectorizer, model, testTweets, testTweetsDate, trainingDataLen):
+  testClusterSize = {}
+
+  i = 0
+  for tweet in testTweets:
+    test = vectorizer.transform([tweet])
+    cluster = model.predict(test)
+
+    print('-----------------------------------------------------------------------')
+    print(f'{i + trainingDataLen}. {testTweetsDate[i].strftime("%Y-%m-%d %H:%M:%S")}')
+    if len(tweet) > MAX_PREVIEW_SCRAPPER:
+      print(tweet[:MAX_PREVIEW_SCRAPPER] + '…')
+    else:
+      print(tweet)
+
+    clusterVal = cluster[0]
+    print(f'• Cluster - {clusterVal}')
+
+    # count and increment member cluster size
+    if clusterVal in testClusterSize:
+      newVal = testClusterSize[clusterVal]
+      testClusterSize[clusterVal] = newVal + 1
+    else:
+      testClusterSize[clusterVal] = 1
+
+    i = i + 1
+
+  return testClusterSize
+
+# Process K-Mean clustering
+def processClustering(k, df):
+  # Get tweet content, date
+  allTweets = []
+  allTweetsDate = []
+  for index, row in df.iterrows():
+    # remove punctuation, number
+    content = row['content']
+    # content = re.sub(r'\d+', '', content)
+    cleanContent = content.translate(content.maketrans('', '', string.punctuation))
+    allTweets.append(cleanContent)    
+    allTweetsDate.append(row['date'])
+
+  # Split training and test 
+  trainingDataLen = math.ceil((len(df) * PERCENT_TRAIN) / 100)
+  trainTweets = allTweets[:trainingDataLen] 
+  testTweets = allTweets[trainingDataLen:]
+  testTweetsDate = allTweetsDate[trainingDataLen:]
+
+  # Create training data
+  vectorizer = TfidfVectorizer(stop_words='english')
+  trainData = vectorizer.fit_transform(trainTweets)
+
+  # Create K-Mean object
+  model = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=1)
+
+  # Trai the data
+  model.fit(trainData)
+
+  # Get Centroid
+  orderCentroids = model.cluster_centers_.argsort()[:, ::-1]
+  terms = vectorizer.get_feature_names()
+
+  trainingClusterSize = dict(Counter(model.labels_))
+  print(f'Size of training cluster member : {trainingClusterSize}')
+
+  # Check top terms
+  print('\nTop terms per cluster:')
+  for i in range(k):
+    print(f'\nCluster - {i} [size={trainingClusterSize[i]}]')
+    countPreview = int(math.ceil(TOP_WORD / k))
+    topTerms = []
+    [ topTerms.append(terms[ind]) for ind in orderCentroids[i, :countPreview] ]
+    print(topTerms)
+
+  # Test the data
+  print('\nTest the tweets cluster:')
+  testClusterSize = testTweetCluster(vectorizer, model, testTweets, testTweetsDate, trainingDataLen + 1)
+  print(f'\nSize of test cluster member : {testClusterSize}')
+
+  # Merge training and test cluster member size
+  clusterSize = {}
+  # training
+  for key in trainingClusterSize:
+    clusterKey = f'Cluster - {key}'
+    val = trainingClusterSize[key]
+
+    if clusterKey in clusterSize:
+      currVal = clusterSize[clusterKey]
+      clusterSize[clusterKey] = currVal + val
+    else:
+      clusterSize[clusterKey] = val
+
+  # test
+  for key in testClusterSize:
+    clusterKey = f'Cluster - {key}'
+    val = testClusterSize[key]
+
+    if clusterKey in clusterSize:
+      currVal = clusterSize[clusterKey]
+      clusterSize[clusterKey] = currVal + val
+    else:
+      clusterSize[clusterKey] = val
+
+  print('Size of merged cluster member :')
+  for key in clusterSize:
+    print(f'- {key} : {clusterSize[key]}')
+
+  return clusterSize
 
 # Get Data from Twitter or Read from buffered/created CSV
 def getData(username, count):
@@ -300,7 +419,7 @@ def getData(username, count):
                  'ner_date': ner[nex.DATE],
                  'ner_time': ner[nex.TIME],
                  'ner_money': ner[nex.MONEY],
-                 'content': noLinkTweetContent
+                 'content': cleanTweetContent.lower()
                 }
       df = df.append(entryDf, ignore_index=True)
 
@@ -343,20 +462,39 @@ if __name__ == '__main__':
   try:
     userVal = ''
     countVal = 0
+    k = 1
 
     # CONST.DEBUG = True
     if CONST.DEBUG:
       # Consider: SCMPNews vicenews AJEnglish AJENews BBCWorld guardiannews MetroUK
       #           cnni CNBC WIONews
-      userVal = 'cnni'
-      countVal = 100
+      userVal = 'WIONews'
+      countVal = 20
+      k = K
     else:
+      # Username and count tweet
       userVal = input("Input username news twitter: ")
       
       # Check the CSV
       fileCsvExist = path.exists(f'{userVal}.csv')
       if not fileCsvExist:
         countVal = input("Count of tweet to fetch (min. 20): ")
+
+      # K
+      getK = True
+      while getK:
+        kVal = input("Input K: ")
+        if kVal.isnumeric():
+          k = int(kVal)
+          if k <= 1:
+            print('K must be larger than 1... (Press any key to continue)')
+            input('')
+          else:
+            # Proceed
+            getK = False
+        else:
+          print('Invalid K... (Press any key to continue)')
+          input('')
 
       print('')
 
@@ -369,7 +507,12 @@ if __name__ == '__main__':
       if (len(df) <= 0):
         print('NO DATA FOUND, Exiting now!!!')
       else:
-        print('Processing graph…')
+        print('\nProcessing clusters…')
+        
+        # Process clustering 
+        clusterSize = processClustering(k, df)
+        
+        print('\nProcessing graph…')
 
         # sort dataframe first
         df.sort_values(by='date')
@@ -383,7 +526,7 @@ if __name__ == '__main__':
         dfTokenShow = dfToken.head(TOP_WORD)
 
         # define view list
-        viewList = ['TOKEN', 'PERSON', 'LOCATION', 'DATE-TIME', 'EVENT']
+        viewList = ['TOKEN', 'CLUSTER', 'PERSON', 'LOCATION', 'DATE-TIME', 'EVENT']
 
         # Visualize
         title = f'Mining @{userVal} tweet from {dtMin.strftime("%Y-%m-%d  %H:%M:%S")} - {dtMax.strftime("%Y-%m-%d  %H:%M:%S")}'
@@ -395,6 +538,9 @@ if __name__ == '__main__':
 
         # Button Next event
         def next(event):
+          # Export global var
+          global k
+          global clusterSize
           global plt
           global ax
           global bnext
@@ -423,6 +569,21 @@ if __name__ == '__main__':
 
             # plot data        
             ax.barh(dfTokenShow['token'], dfTokenShow['freq'], align='center', color=np.random.rand(TOP_WORD, 3))
+            ax.invert_yaxis()  # labels read top-to-bottom
+
+          # Cluster view
+          elif currentList == 'CLUSTER':
+            # Re-plot, Add graph info
+            ax.set_title(f'Cluster member size with K={k}')
+            ax.set_xlabel('size', fontsize=11)
+            ax.set_ylabel('cluster', fontsize=11)
+            ax.tick_params(axis='both', which='major', labelsize=9)
+            ax.tick_params(axis='both', which='minor', labelsize=7)
+
+            # plot data
+            xdata = [ key for key in clusterSize ]
+            ydata = [ clusterSize[key] for key in clusterSize ]
+            ax.barh(xdata, ydata, align='center', color=np.random.rand(TOP_WORD, 3))
             ax.invert_yaxis()  # labels read top-to-bottom
 
           # Ner view
