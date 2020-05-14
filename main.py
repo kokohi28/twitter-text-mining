@@ -1,6 +1,7 @@
 # local module
 from twitter_scraper import get_tweets
 import const as CONST
+import nerExtractor as nex
 
 # common
 import os
@@ -12,19 +13,20 @@ from datetime import datetime
 import nltk
 import re
 import string
-import Sastrawi
-from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
-from nltk.tokenize import sent_tokenize, word_tokenize
+# import Sastrawi
+# from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
+from nltk.stem import WordNetLemmatizer
 
 # Dataframe, Numpy
 import pandas as pd
 import numpy as np
 
 # Blob
-import textblob
-from textblob import TextBlob
+# import textblob
+# from textblob import TextBlob
 
 # Graph plot
 import matplotlib.pyplot as plt
@@ -33,25 +35,132 @@ from matplotlib.widgets import Button
 # Constanta
 TWEET_ONE_PAGE = 20
 TOP_WORD = 30
-TITLE = 'INDONESIAN POLITICAN TWITTER TEXT MINING'
+MAX_PREVIEW_SCRAPPER = 70 # char
+
+# VAR
+# create stopwords
+listStopword = set(stopwords.words('english'))
+# Special stop-chars
+additionalStopword = {'"', '\'', '\'', '’', '–', '…', '—', '\"', '”', '“', '•'}
+
+# Lemmatizer
+lemmatizer = WordNetLemmatizer()
 
 def welcomeMessage():
-  print('###################################################')
-  print('#                                                 #')
-  print('#  INDONESIAN POLITICAN TWITTER TEXT MINING       #')
-  print('#                                                 #')
-  print('#  BY : - M. Khafidhun Alim Muslim (17051204063)  #')
-  print('#       - Koko Himawan Permadi (19051204111)      #')
-  print('#                                                 #')
-  print('###################################################')
+  print('######################################################################')
+  print('##                                                                  ##')
+  print('##  NEWS ACCOUNT                                                    ##')
+  print('##  TWITTER TEXT MINING                                             ##')
+  print('##                                                                  ##')
+  print('##  BY : - Koko Himawan Permadi (19051204111)                       ##')
+  print('##       - M. Khafidhun Alim Muslim (17051204063)                   ##')
+  print('##                                                                  ##')
+  print('######################################################################')
   return
 
 # Utilitas untuk get current millis
 def localMillis():
   return int(round(time.time() * 1000))
 
+# Print tweet with Ner (Named Entity Recognition)
+def printTweet(i, tweetDate, content, ner):
+  print('-----------------------------------------------------------------------')
+  print(f'{i}. {tweetDate.strftime("%Y-%m-%d %H:%M:%S")}')
+  # print with NER mapped
+  if len(content) > MAX_PREVIEW_SCRAPPER:
+    print(content[:MAX_PREVIEW_SCRAPPER] + '…')
+  else:
+    print(content)
+
+  for j in range(0, nex.MONEY + 1):
+    if len(ner[j]) > 0:
+      if j == nex.PERSON:
+        print(f'• Persons: {ner[j]}')
+      elif j == nex.NORP:
+        print(f'• Groups: {ner[j]}')
+      elif j == nex.FAC:
+        print(f'• Facilities: {ner[j]}')
+      elif j == nex.ORG:
+        print(f'• Organizations: {ner[j]}')
+      elif j == nex.GPE:
+        print(f'• Countries/Cities: {ner[j]}')
+      elif j == nex.LOC:
+        print(f'• Locations: {ner[j]}')
+      elif j == nex.PRODUCT:
+        print(f'• Objects: {ner[j]}')
+      elif j == nex.EVENT:
+        print(f'• Events: {ner[j]}')
+      elif j == nex.WORK_OF_ART:
+        print(f'• Artworks: {ner[j]}')
+      elif j == nex.LAW:
+        print(f'• Laws: {ner[j]}')
+      elif j == nex.DATE:
+        print(f'• Dates: {ner[j]}')
+      elif j == nex.TIME:
+        print(f'• Times: {ner[j]}')
+      elif j == nex.MONEY:
+        print(f'• Finances: {ner[j]}')
+  return
+
+# Process Token Ner
+def processTokenNer(ner):
+  # process ner
+  tokenNer = []
+
+  for j in range(0, nex.MONEY + 1):
+    if len(ner[j]) > 0:
+      if j == nex.PERSON: # Person as PERSON
+        personNer = ner[j].split(',')
+        for n in personNer:
+          tokenNer.append(f'{n}/PERSON')
+      elif j == nex.NORP: # Skip Organization
+        pass #
+      elif j == nex.FAC: # Facility as LOCATION
+        facNer = ner[j].split(',')
+        for n in facNer:
+          tokenNer.append(f'{n}/LOCATION')
+      elif j == nex.ORG:
+        pass #
+      elif j == nex.GPE: # City/Country as LOCATION
+        gpeNer = ner[j].split(',')
+        for n in gpeNer:
+          tokenNer.append(f'{n}/LOCATION')
+      elif j == nex.LOC: # Location as LOCATION
+        locNer = ner[j].split(',')
+        for n in locNer:
+          tokenNer.append(f'{n}/LOCATION')
+      elif j == nex.PRODUCT: # Skip Product
+        pass #
+      elif j == nex.EVENT: # Event as EVENT
+        eventNer = ner[j].split(',')
+        for n in eventNer:
+          tokenNer.append(f'{n}/EVENT')
+      elif j == nex.WORK_OF_ART: # Work of Art as PERSON
+        woaNer = ner[j].split(',')
+        for n in woaNer:
+          tokenNer.append(f'{n}/PERSON')
+      elif j == nex.LAW: # Skip Law
+        pass #
+      elif j == nex.DATE: # Date as DATE-TIME
+        dateNer = ner[j].split(',')
+        for n in dateNer:
+          tokenNer.append(f'{n}/DATE-TIME')
+      elif j == nex.TIME: # Time as DATE-TIME
+        timeNer = ner[j].split(',')
+        for n in timeNer:
+          tokenNer.append(f'{n}/DATE-TIME')
+      elif j == nex.MONEY: # Skip Money
+        pass #
+
+  return tokenNer
+
+# Get Data from Twitter or Read from buffered/created CSV
 def getData(username, count):
-  #  Try read CSV
+  # Export global var
+  global listStopword
+  global additionalStopword
+
+  # Try read CSV
   fileCsvExist = path.exists(f'{username}.csv')
   if fileCsvExist:
     # read from CSV
@@ -60,47 +169,91 @@ def getData(username, count):
     df = pd.read_csv(f'{username}.csv', header='infer', parse_dates=['date'], date_parser=dateParse)
     df = df.sort_values(by='date')
 
-    print('tweet from CSV: ', len(df))
-    print(df)
-
-    # create stopwords
-    listStopword = set(stopwords.words('indonesian'))
-
-    # tokenize
-    # tokenMontly = [] # token per document
+    print(f'got {len(df)} tweets from @{username} from CSV')
+    
+    # define token
     tokenAll = [] # token all, alternative for set
+    tokenNer = []
 
+    # loop per tweet
+    print('\nfound:')
+    i = 1
     for index, row in df.iterrows():
       # print(index, row['date'], row['content'])
-      token = nltk.tokenize.word_tokenize(row['content'])
-      for t in token:
-        if t not in listStopword:
-          tokenAll.append(t)
 
+      # NER TAG
+      doc, ner = nex.getDocNer(row['content'])
+
+      # remove punctuation, number and to lowercase
+      noNumbTweetContent = re.sub(r'\d+', '', row['content'])
+      cleanTweetContent = noNumbTweetContent.translate(noNumbTweetContent.maketrans('', '', string.punctuation))
+      
+      # tokenize
+      token = nltk.tokenize.word_tokenize(cleanTweetContent.lower())
+      for t in token:
+        if t not in listStopword \
+           and t not in additionalStopword:
+          tokenAll.append(lemmatizer.lemmatize(t))
+
+      # fill token ner
+      tokenNer = tokenNer + processTokenNer(ner)
+
+      # print tweet
+      printTweet(i, row['date'], row['content'], ner)
+      i = i + 1
+      print('')
+
+    # create dataframe all token
+    print('Calculate Frequency Distributions…')
     dfToken = pd.DataFrame(columns=['token', 'freq'])
     fd = FreqDist(tokenAll)
     for f in fd:
       entry = {'token' : f, 'freq' : fd[f]}
       dfToken = dfToken.append(entry, ignore_index=True)
 
-    return df, dfToken
+    # create dataframe for ner
+    dfNer = pd.DataFrame(columns=['ner', 'type', 'freq'])
+    fdNer = FreqDist(tokenNer)
+    for f in fdNer:
+      entryNer = f.split('/')
+      entry = {'ner' : entryNer[0], 'type' : entryNer[1], 'freq' : fdNer[f]}
+      dfNer = dfNer.append(entry, ignore_index=True)
+
+    return df, dfToken, dfNer
+    
   else:
-    # create stemmer
-    factory = StemmerFactory()
-    stemmer = factory.create_stemmer()
-
-    # create stopwords
-    listStopword = set(stopwords.words('indonesian'))
-
-    print('try get', count, 'tweets')
+    # get from Twitter
+    print(f'try get {count} tweets from @{username}')
     page = int(round(count / TWEET_ONE_PAGE))
 
-    df = pd.DataFrame(columns=['date', 'year', 'month', 'day', 'content', 'replies', 'retweet', 'likes'])
+    # create dataframe
+    df = pd.DataFrame(columns=['date', # Date tweet
+                               'year',
+                               'month',
+                               'day',
+                               'ner_person', # PERSON : People, including fictional.
+                               'ner_norp', # NORP : Nationalities or religious or political groups.
+                               'ner_fac', # FAC : Buildings, airports, highways, bridges, etc.
+                               'ner_org', # ORG : Companies, agencies, institutions, etc.
+                               'ner_gpe', # GPE : Countries, cities, states.
+                               'ner_loc', # LOC : Non-GPE locations, mountain ranges, bodies of water.
+                               'ner_product', # PRODUCT : Objects, vehicles, foods, etc. (Not services.)
+                               'ner_event', # EVENT : Named hurricanes, battles, wars, sports events, etc.
+                               'ner_work_of_art', # WORK_OF_ART : Titles of books, songs, etc.
+                               'ner_law', # LAW : Named documents made into laws.
+                               'ner_date', # DATE : Absolute or relative dates or periods.
+                               'ner_time', # TIME : Times smaller than a day.
+                               'ner_money', # MONEY : Monetary values, including unit.
+                               'content'] # Original tweet content
+                               )
 
-    # tokenize
-    # tokenMontly = [] # token per document
+    # define token
     tokenAll = [] # token all, alternative for set
+    tokenNer = []
 
+    # loop per fetched tweet
+    print('\nfound:')
+    i = 1
     for t in get_tweets(username, pages=page):
       tweetDate = t[CONST.IDX_DATE]
       tweetContent = t[CONST.IDX_TWEET]
@@ -109,46 +262,77 @@ def getData(username, count):
       respLikes = t[CONST.IDX_LIKES]
 
       # Remove any links and numbers
-      tweetContent = tweetContent.replace('pic.twitter.com', 'http://pic.twitter.com')
-      tweetContent = re.sub(r'\w+:\/{2}[\d\w-]+(\.[\d\w-]+)*(?:(?:\/[^\s/]*))*', '', tweetContent)
-      tweetContent = re.sub(r'\d+', '', tweetContent)
+      noLinkTweetContent = tweetContent.replace('pic.twitter.com', 'http://pic.twitter.com')
+      noLinkTweetContent = re.sub(r'\w+:\/{2}[\d\w-]+(\.[\d\w-]+)*(?:(?:\/[^\s/]*))*', '', noLinkTweetContent)
+      noNumbTweetContent = re.sub(r'\d+', '', noLinkTweetContent)
 
-      # lower the string, remove punctuation
-      tweetContent = tweetContent.lower().translate(tweetContent.maketrans('', '', string.punctuation))
+      # remove punctuation
+      cleanTweetContent = noNumbTweetContent.translate(noNumbTweetContent.maketrans('', '', string.punctuation))
 
-      # stemming
-      tweetContent = stemmer.stem(tweetContent)
+      # NER TAG
+      doc, ner = nex.getDocNer(noLinkTweetContent)
 
-      token = nltk.tokenize.word_tokenize(tweetContent)
+      # tokenize
+      token = nltk.tokenize.word_tokenize(cleanTweetContent.lower())
       for t in token:
-        if t not in listStopword:
-          tokenAll.append(t)
+        if t not in listStopword \
+           and t not in additionalStopword:
+          tokenAll.append(lemmatizer.lemmatize(t))
 
+      # fill token ner
+      tokenNer = tokenNer + processTokenNer(ner)
+
+      # add to dataframe
       entryDf = {'date': tweetDate,
                  'year': int(tweetDate.year),
                  'month': int(tweetDate.month),
                  'day': int(tweetDate.day),
-                 'content': tweetContent,
-                 'replies': respReplies,
-                 'retweet': respRetweet,
-                 'likes': respLikes
+                 'ner_person': ner[nex.PERSON],
+                 'ner_norp': ner[nex.NORP],
+                 'ner_fac': ner[nex.FAC],
+                 'ner_org': ner[nex.ORG],
+                 'ner_gpe': ner[nex.GPE],
+                 'ner_loc': ner[nex.LOC],
+                 'ner_product': ner[nex.PRODUCT],
+                 'ner_event': ner[nex.EVENT],
+                 'ner_work_of_art': ner[nex.WORK_OF_ART],
+                 'ner_law': ner[nex.LAW],
+                 'ner_date': ner[nex.DATE],
+                 'ner_time': ner[nex.TIME],
+                 'ner_money': ner[nex.MONEY],
+                 'content': noLinkTweetContent
                 }
       df = df.append(entryDf, ignore_index=True)
 
-    print('tweet found: ', len(df))
-    print(df.head())
+      # print tweet
+      printTweet(i, tweetDate, noLinkTweetContent, ner)
+      i = i + 1
+      print('')
 
+    # print(df.head())
+
+    # Save to CSV as buffer data
     if len(df) > 0:
+      df = df.sort_values(by='date', ascending=False)
       df.to_csv(f'{username}.csv')
-    df = df.sort_values(by='date')
 
+    # create dataframe all token
+    print('Calculate Frequency Distributions…') 
     dfToken = pd.DataFrame(columns=['token', 'freq'])
     fd = FreqDist(tokenAll)
     for f in fd:
       entry = {'token' : f, 'freq' : fd[f]}
       dfToken = dfToken.append(entry, ignore_index=True)
 
-    return df, dfToken
+    # create dataframe for ner
+    dfNer = pd.DataFrame(columns=['ner', 'type', 'freq'])
+    fdNer = FreqDist(tokenNer)
+    for f in fdNer:
+      entryNer = f.split('/')
+      entry = {'ner' : entryNer[0], 'type' : entryNer[1], 'freq' : fdNer[f]}
+      dfNer = dfNer.append(entry, ignore_index=True)
+
+    return df, dfToken, dfNer
 
 # MAIN PROGRAM
 if __name__ == '__main__':
@@ -160,50 +344,139 @@ if __name__ == '__main__':
     userVal = ''
     countVal = 0
 
-    CONST.DEBUG = True
+    # CONST.DEBUG = True
     if CONST.DEBUG:
-      userVal = 'jokowi'
-      countVal = 500
+      # Consider: SCMPNews vicenews AJEnglish AJENews BBCWorld guardiannews MetroUK
+      #           cnni CNBC WIONews
+      userVal = 'cnni'
+      countVal = 100
     else:
-      userVal = input("Masukkan username twitter: ")
-      countVal = input("Jumlah tweet yang akan diambil (minimal 20): ")
+      userVal = input("Input username news twitter: ")
+      
+      # Check the CSV
+      fileCsvExist = path.exists(f'{userVal}.csv')
+      if not fileCsvExist:
+        countVal = input("Count of tweet to fetch (min. 20): ")
+
       print('')
 
-    # try:
-    count = int(countVal)
-    if count < TWEET_ONE_PAGE:
-      count = TWEET_ONE_PAGE
+    try:
+      count = int(countVal)
+      if count < TWEET_ONE_PAGE:
+        count = TWEET_ONE_PAGE
 
-    df, dfToken = getData(userVal, count)
-    if (len(df) <= 0):
-      print('NO DATA FOUND, Exiting now!!!')
-    else:
-      print('Processing text')
+      df, dfToken, dfNer = getData(userVal, count)
+      if (len(df) <= 0):
+        print('NO DATA FOUND, Exiting now!!!')
+      else:
+        print('Processing graph…')
 
-      dfToken = dfToken.sort_values(by='freq', ascending=False)
-      dfTokenShow = dfToken.head(TOP_WORD)
-
-      # Visualize
-      fig, ax = plt.subplots(num=TITLE)
-      plt.subplots_adjust(bottom=0.2)
-
-      # Add graph info
-      ax.set_title(f'{TOP_WORD} token dengan freq tertinggi')
-      ax.set_xlabel('token', fontsize=14)
-      ax.set_ylabel('freq', fontsize=14)
-      plt.xticks(rotation=90)
-      # ax.grid(linestyle='-', linewidth='0.5', color='gray')
+        # sort dataframe first
+        df.sort_values(by='date')
       
-      # plot trained data
-      ax.bar(dfTokenShow['token'], dfTokenShow['freq'], color=np.random.rand(TOP_WORD, 3))
-      # ax.plot(dfTokenShow['token'], dfTokenShow['freq'])
+        # Get minimum/maximum date of dataframe
+        dtMin = df.loc[df.index.min(), 'date']
+        dtMax = df.loc[df.index.max(), 'date']
 
-      # finally show graph
-      plt.show()
+        # prepare token dataframe
+        dfToken = dfToken.sort_values(by='freq', ascending=False)
+        dfTokenShow = dfToken.head(TOP_WORD)
 
-    # except Exception as ex:
-    #   print('Fail to process scrapping, cause:')
-    #   print(ex)
+        # define view list
+        viewList = ['TOKEN', 'PERSON', 'LOCATION', 'DATE-TIME', 'EVENT']
+
+        # Visualize
+        title = f'Mining @{userVal} tweet from {dtMin.strftime("%Y-%m-%d  %H:%M:%S")} - {dtMax.strftime("%Y-%m-%d  %H:%M:%S")}'
+        fig, ax = plt.subplots(num=title)
+        plt.subplots_adjust(bottom=0.2)
+
+        bnext = None
+        listIdx = 1
+
+        # Button Next event
+        def next(event):
+          global plt
+          global ax
+          global bnext
+          global listIdx
+          global viewList
+          global dfTokenShow
+          global dfNer
+
+          # set current
+          currentList = viewList[listIdx]
+          print(f'\nProcessing - {currentList}')
+
+          # Clear graph
+          ax.clear()
+
+          # Token view
+          if currentList == 'TOKEN':
+            print(dfTokenShow.head())
+
+            # Re-plot, Add graph info
+            ax.set_title(f'{TOP_WORD} highest freq token from @{userVal}')
+            ax.set_xlabel('freq', fontsize=11)
+            ax.set_ylabel('token', fontsize=11)
+            ax.tick_params(axis='both', which='major', labelsize=9)
+            ax.tick_params(axis='both', which='minor', labelsize=7)
+
+            # plot data        
+            ax.barh(dfTokenShow['token'], dfTokenShow['freq'], align='center', color=np.random.rand(TOP_WORD, 3))
+            ax.invert_yaxis()  # labels read top-to-bottom
+
+          # Ner view
+          else:
+            # filter dataframe Ner
+          
+            mask = dfNer['type'] == currentList
+            ner = dfNer.loc[mask]
+            ner = ner.head(TOP_WORD)
+            print(ner.head())
+
+            # Re-plot, Add graph info
+            ax.set_title(f'highest freq token for {currentList}')
+            ax.set_xlabel('freq', fontsize=11)
+            ax.set_ylabel('ner', fontsize=11)
+            ax.tick_params(axis='both', which='major', labelsize=9)
+            ax.tick_params(axis='both', which='minor', labelsize=7)
+
+            # plot data        
+            ax.barh(ner['ner'], ner['freq'], align='center', color=np.random.rand(TOP_WORD, 3))
+            ax.invert_yaxis()  # labels read top-to-bottom
+
+          # Button label for next
+          listIdx = listIdx + 1
+          if listIdx >= len(viewList):
+            listIdx = 0
+          bnext.label.set_text(viewList[listIdx])
+
+          # Plot
+          ax.draw(renderer=None, inframe=False)
+          plt.pause(0.0001)
+
+        # Create button Predict
+        axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+        bnext = Button(axnext, viewList[1]) # PERSON NEXT
+        bnext.on_clicked(next)
+
+        # Add graph info
+        ax.set_title(f'{TOP_WORD} highest freq token from @{userVal}')
+        ax.set_xlabel('freq', fontsize=11)
+        ax.set_ylabel('token', fontsize=11)
+        ax.tick_params(axis='both', which='major', labelsize=9)
+        ax.tick_params(axis='both', which='minor', labelsize=7)
+
+        # plot data        
+        ax.barh(dfTokenShow['token'], dfTokenShow['freq'], align='center', color=np.random.rand(TOP_WORD, 3))
+        ax.invert_yaxis()  # labels read top-to-bottom
+
+        # finally show graph
+        plt.show()
+
+    except Exception as ex:
+      print('Fail to process scrapping, cause:')
+      raise(ex)
   except KeyboardInterrupt:
     pass
   

@@ -34,7 +34,7 @@ def get_tweets(user, pages=25):
 
             for tweet in html.find('.stream-item'):
                 try:
-                  text = tweet.find('.tweet-text')[0].full_text
+                    text = tweet.find('.tweet-text')[0].full_text
                 except:
                   continue
                 
@@ -55,8 +55,11 @@ def get_tweets(user, pages=25):
                     for style in styles:
                         if style.startswith('background'):
                             tmp = style.split('/')[-1]
-                            video_id = tmp[:tmp.index('.jpg')]
-                            videos.append({'id': video_id})
+                            try:
+                                video_id = tmp[:tmp.index('.jpg')]
+                                videos.append({'id': video_id})
+                            except:
+                                continue
 
                 text = re.sub('http', ' http', text, 1)
                 # tweetInfo = {'tweetId': tweetId, 'time': timestamp, 'text': text,
