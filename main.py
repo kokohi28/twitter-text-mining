@@ -487,13 +487,13 @@ if __name__ == '__main__':
         if kVal.isnumeric():
           k = int(kVal)
           if k <= 1:
-            print('K must be larger than 1... (Press any key to continue)')
+            print('K must be larger than 1... (Press ENTER to continue)')
             input('')
           else:
             # Proceed
             getK = False
         else:
-          print('Invalid K... (Press any key to continue)')
+          print('Invalid K... (Press ENTER to continue)')
           input('')
 
       print('')
